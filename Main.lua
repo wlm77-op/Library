@@ -74,22 +74,17 @@ end)
 local Library = {
     Registry = {};
     RegistryMap = {};
-
     HudRegistry = {};
-
     FontColor = Color3.fromRGB(255, 255, 255);
-    MainColor = Color3.fromRGB(28, 28, 28);
-    BackgroundColor = Color3.fromRGB(20, 20, 20);
-    AccentColor = Color3.fromRGB(0, 85, 255);
-    OutlineColor = Color3.fromRGB(50, 50, 50);
-    RiskColor = Color3.fromRGB(255, 50, 50),
-
+    MainColor = Color3.fromRGB(18, 18, 18);
+    BackgroundColor = Color3.fromRGB(10, 10, 10);
+    AccentColor = Color3.fromRGB(200, 30, 30);
+    OutlineColor = Color3.fromRGB(80, 15, 15);
+    RiskColor = Color3.fromRGB(255, 80, 80);
     Black = Color3.new(0, 0, 0);
     FontFace = CustomFont;
-
     OpenedFrames = {};
     DependencyBoxes = {};
-
     Signals = {};
     ScreenGui = ScreenGui;
 };
