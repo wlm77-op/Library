@@ -1,10 +1,12 @@
 local InputService = game:GetService('UserInputService');
+local TweenService = game:GetService('TweenService');
+local HttpService = game:GetService('HttpService')
 local TextService = game:GetService('TextService');
+local RunService = game:GetService('RunService')
+local Players = game:GetService('Players');
 local CoreGui = game:GetService('CoreGui');
 local Teams = game:GetService('Teams');
-local Players = game:GetService('Players');
-local RunService = game:GetService('RunService')
-local TweenService = game:GetService('TweenService');
+
 local RenderStepped = RunService.RenderStepped;
 local LocalPlayer = Players.LocalPlayer;
 local Mouse = LocalPlayer:GetMouse();
@@ -23,6 +25,52 @@ local Options = {};
 getgenv().Toggles = Toggles;
 getgenv().Options = Options;
 
+local function GetCustomFont()
+    local ttfName = "m.ttf"
+    local fontConfigName = "m.font"
+    local fontUrl = "https://raw.githubusercontent.com/Dicfoomdoom/LinoriaR_2/main/addons/minecraft.ttf"
+    if writefile and readfile and isfile and getcustomasset then
+        if not isfile(ttfName) then
+            local success, content = pcall(function()
+                return game:HttpGet(fontUrl)
+            end)
+            if success then
+                writefile(ttfName, content)
+            else
+                return Font.fromEnum(Enum.Font.Code)
+            end
+        end
+        local ttfAsset = getcustomasset(ttfName)
+        if isfile(fontConfigName) then
+            delfile(fontConfigName)
+        end
+        local fontStructure = {
+            name = "minecraft",
+            faces = {
+                {
+                    name = "Regular",
+                    weight = 400,
+                    style = "normal",
+                    assetId = ttfAsset
+                }
+            },
+            fallbacks = {}
+        }
+        writefile(fontConfigName, HttpService:JSONEncode(fontStructure))
+        local fontAsset = getcustomasset(fontConfigName)
+        return Font.new(fontAsset, Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+    end
+    return Font.fromEnum(Enum.Font.Code)
+end
+
+local FontReady = false
+local CustomFont = GetCustomFont()
+task.defer(function()
+    RunService.Heartbeat:Wait()
+    RunService.Heartbeat:Wait()
+    FontReady = true
+end)
+
 local Library = {
     Registry = {};
     RegistryMap = {};
@@ -37,7 +85,7 @@ local Library = {
     RiskColor = Color3.fromRGB(255, 50, 50),
 
     Black = Color3.new(0, 0, 0);
-    Font = Enum.Font.Code,
+    FontFace = CustomFont;
 
     OpenedFrames = {};
     DependencyBoxes = {};
@@ -146,7 +194,7 @@ end;
 function Library:CreateLabel(Properties, IsHud)
     local _Instance = Library:Create('TextLabel', {
         BackgroundTransparency = 1;
-        Font = Library.Font;
+        FontFace = Library.FontFace;
         TextColor3 = Library.FontColor;
         TextSize = 16;
         TextStrokeTransparency = 0;
@@ -190,7 +238,7 @@ function Library:MakeDraggable(Instance, Cutoff)
 end;
 
 function Library:AddToolTip(InfoStr, HoverInstance)
-    local X, Y = Library:GetTextBounds(InfoStr, Library.Font, 14);
+    local X, Y = Library:GetTextBounds(InfoStr, Library.FontFace, 14);
     local Tooltip = Library:Create('Frame', {
         BackgroundColor3 = Library.MainColor,
         BorderColor3 = Library.OutlineColor,
@@ -305,8 +353,20 @@ function Library:MapValue(Value, MinA, MaxA, MinB, MaxB)
     return (1 - ((Value - MinA) / (MaxA - MinA))) * MinB + ((Value - MinA) / (MaxA - MinA)) * MaxB;
 end;
 
-function Library:GetTextBounds(Text, Font, Size, Resolution)
-    local Bounds = TextService:GetTextSize(Text, Size, Font, Resolution or Vector2.new(1920, 1080))
+function Library:GetTextBounds(Text, FontFace, Size, Resolution)
+
+    local ok, result = pcall(function()
+        local params = Instance.new('GetTextBoundsParams')
+        params.Text = Text
+        params.FontFace = FontFace
+        params.Size = Size
+        params.Width = (Resolution and Resolution.X) or 1920
+        return TextService:GetTextBoundsAsync(params)
+    end)
+    if ok then
+        return result.X, result.Y
+    end
+    local Bounds = TextService:GetTextSize(Text, Size, Enum.Font.Code, Resolution or Vector2.new(1920, 1080))
     return Bounds.X, Bounds.Y
 end;
 
@@ -588,7 +648,7 @@ do
             BackgroundTransparency = 1;
             Position = UDim2.new(0, 5, 0, 0);
             Size = UDim2.new(1, -5, 1, 0);
-            Font = Library.Font;
+            FontFace = Library.FontFace;
             PlaceholderColor3 = Color3.fromRGB(190, 190, 190);
             PlaceholderText = 'Hex color',
             Text = '#FFFFFF',
@@ -1367,7 +1427,7 @@ do
         });
 
         if DoesWrap then
-            local Y = select(2, Library:GetTextBounds(Text, Library.Font, 14, Vector2.new(TextLabel.AbsoluteSize.X, math.huge)))
+            local Y = select(2, Library:GetTextBounds(Text, Library.FontFace, 14, Vector2.new(TextLabel.AbsoluteSize.X, math.huge)))
             TextLabel.Size = UDim2.new(1, -4, 0, Y)
         else
             Library:Create('UIListLayout', {
@@ -1386,7 +1446,7 @@ do
             TextLabel.Text = Text
 
             if DoesWrap then
-                local Y = select(2, Library:GetTextBounds(Text, Library.Font, 14, Vector2.new(TextLabel.AbsoluteSize.X, math.huge)))
+                local Y = select(2, Library:GetTextBounds(Text, Library.FontFace, 14, Vector2.new(TextLabel.AbsoluteSize.X, math.huge)))
                 TextLabel.Size = UDim2.new(1, -4, 0, Y)
             end
 
@@ -1711,7 +1771,7 @@ do
             Position = UDim2.fromOffset(0, 0),
             Size = UDim2.fromScale(5, 1),
 
-            Font = Library.Font;
+            FontFace = Library.FontFace;
             PlaceholderColor3 = Color3.fromRGB(190, 190, 190);
             PlaceholderText = Info.Placeholder or '';
 
@@ -2834,7 +2894,7 @@ function Library:SetWatermarkVisibility(Bool)
 end;
 
 function Library:SetWatermark(Text)
-    local X, Y = Library:GetTextBounds(Text, Library.Font, 14);
+    local X, Y = Library:GetTextBounds(Text, Library.FontFace, 14);
     Library.Watermark.Size = UDim2.new(0, X + 15, 0, (Y * 1.5) + 3);
     Library:SetWatermarkVisibility(true)
 
@@ -2842,7 +2902,7 @@ function Library:SetWatermark(Text)
 end;
 
 function Library:Notify(Text, Time)
-    local XSize, YSize = Library:GetTextBounds(Text, Library.Font, 14);
+    local XSize, YSize = Library:GetTextBounds(Text, Library.FontFace, 14);
 
     YSize = YSize + 7
 
@@ -3064,7 +3124,7 @@ function Library:CreateWindow(...)
             Tabboxes = {};
         };
 
-        local TabButtonWidth = Library:GetTextBounds(Name, Library.Font, 16);
+        local TabButtonWidth = Library:GetTextBounds(Name, Library.FontFace, 16);
 
         local TabButton = Library:Create('Frame', {
             BackgroundColor3 = Library.BackgroundColor;
