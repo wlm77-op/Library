@@ -2897,14 +2897,17 @@ function Library:SetWatermark(Text)
 end;
 
 function Library:Notify(Text, Time)
-    local XSize, YSize = Library:GetTextBounds(Text, Library.FontFace, 14);
+    local XSize, YSize = Library:GetTextBounds(Text, Library.FontFace, 14)
 
     YSize = YSize + 7
 
+    local FullWidth = XSize + 8 + 4
+    local FadeWidth = math.floor(FullWidth * 0.30)
+
     local NotifyOuter = Library:Create('Frame', {
         BorderColor3 = Color3.new(0, 0, 0);
-        Position = UDim2.new(0, 100, 0, 10);
-        Size = UDim2.new(0, 0, 0, YSize);
+        Position = UDim2.fromOffset(FullWidth + 10, 10);
+        Size = UDim2.fromOffset(FullWidth, YSize);
         ClipsDescendants = true;
         ZIndex = 100;
         Parent = Library.NotificationArea;
@@ -2914,7 +2917,7 @@ function Library:Notify(Text, Time)
         BackgroundColor3 = Library.MainColor;
         BorderColor3 = Library.OutlineColor;
         BorderMode = Enum.BorderMode.Inset;
-        Size = UDim2.new(1, 0, 1, 0);
+        Size = UDim2.fromScale(1, 1);
         ZIndex = 101;
         Parent = NotifyOuter;
     });
@@ -2927,13 +2930,13 @@ function Library:Notify(Text, Time)
     local InnerFrame = Library:Create('Frame', {
         BackgroundColor3 = Color3.new(1, 1, 1);
         BorderSizePixel = 0;
-        Position = UDim2.new(0, 1, 0, 1);
+        Position = UDim2.fromOffset(1, 1);
         Size = UDim2.new(1, -2, 1, -2);
         ZIndex = 102;
         Parent = NotifyInner;
     });
 
-    local Gradient = Library:Create('UIGradient', {
+    local BgGradient = Library:Create('UIGradient', {
         Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, Library:GetDarkerColor(Library.MainColor)),
             ColorSequenceKeypoint.new(1, Library.MainColor),
@@ -2942,17 +2945,17 @@ function Library:Notify(Text, Time)
         Parent = InnerFrame;
     });
 
-    Library:AddToRegistry(Gradient, {
+    Library:AddToRegistry(BgGradient, {
         Color = function()
             return ColorSequence.new({
                 ColorSequenceKeypoint.new(0, Library:GetDarkerColor(Library.MainColor)),
                 ColorSequenceKeypoint.new(1, Library.MainColor),
-            });
+            })
         end
     });
 
-    local NotifyLabel = Library:CreateLabel({
-        Position = UDim2.new(0, 4, 0, 0);
+    Library:CreateLabel({
+        Position = UDim2.fromOffset(4, 0);
         Size = UDim2.new(1, -4, 1, 0);
         Text = Text;
         TextXAlignment = Enum.TextXAlignment.Left;
@@ -2964,7 +2967,7 @@ function Library:Notify(Text, Time)
     local LeftColor = Library:Create('Frame', {
         BackgroundColor3 = Library.AccentColor;
         BorderSizePixel = 0;
-        Position = UDim2.new(0, -1, 0, -1);
+        Position = UDim2.fromOffset(-1, -1);
         Size = UDim2.new(0, 3, 1, 2);
         ZIndex = 104;
         Parent = NotifyOuter;
@@ -2974,18 +2977,96 @@ function Library:Notify(Text, Time)
         BackgroundColor3 = 'AccentColor';
     }, true);
 
-    pcall(NotifyOuter.TweenSize, NotifyOuter, UDim2.new(0, XSize + 8 + 4, 0, YSize), 'Out', 'Quad', 0.4, true);
+    local ProgressOuter = Library:Create('Frame', {
+        BackgroundTransparency = 1;
+        BorderSizePixel = 0;
+        Position = UDim2.new(0, 1, 1, -3);
+        Size = UDim2.new(1, -2, 0, 2);
+        ZIndex = 108;
+        ClipsDescendants = true;
+        Parent = NotifyInner;
+    });
+
+    local ProgressBar = Library:Create('Frame', {
+        BackgroundColor3 = Library.AccentColor;
+        BorderSizePixel = 0;
+        Size = UDim2.fromScale(1, 1);
+        ZIndex = 109;
+        Parent = ProgressOuter;
+    });
+
+    Library:AddToRegistry(ProgressBar, {
+        BackgroundColor3 = 'AccentColor';
+    }, true);
+
+    local FadeOverlay = Library:Create('Frame', {
+        BackgroundColor3 = Library.MainColor;
+        BorderSizePixel = 0;
+        Position = UDim2.new(1, -FadeWidth - 1, 0, 1);
+        Size = UDim2.fromOffset(FadeWidth, YSize - 2);
+        ZIndex = 110;
+        Parent = NotifyInner;
+    });
+
+    Library:Create('UIGradient', {
+        Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 1),
+            NumberSequenceKeypoint.new(1, 0),
+        });
+        Rotation = 0;
+        Parent = FadeOverlay;
+    });
+
+    Library:AddToRegistry(FadeOverlay, {
+        BackgroundColor3 = 'MainColor';
+    }, true);
+
+    local function SlideIn()
+        TweenService:Create(NotifyOuter, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Position = UDim2.fromOffset(-6, 10),
+        }):Play()
+
+        task.wait(0.22)
+
+        TweenService:Create(NotifyOuter, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+            Position = UDim2.fromOffset(0, 10),
+        }):Play()
+    end
+
+    local function SlideOut()
+        TweenService:Create(LeftColor, TweenInfo.new(0.12, Enum.EasingStyle.Linear), {
+            BackgroundTransparency = 0.6,
+        }):Play()
+
+        task.wait(0.10)
+
+        TweenService:Create(NotifyOuter, TweenInfo.new(0.20, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+            Position = UDim2.fromOffset(FullWidth + 20, 10),
+        }):Play()
+
+        task.wait(0.20)
+
+        TweenService:Create(NotifyOuter, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = UDim2.fromOffset(FullWidth, 0),
+        }):Play()
+
+        task.wait(0.14)
+        NotifyOuter:Destroy()
+    end
+
+    local function DrainProgress(Duration)
+        TweenService:Create(ProgressBar, TweenInfo.new(Duration, Enum.EasingStyle.Linear), {
+            Size = UDim2.fromScale(0, 1),
+        }):Play()
+    end
 
     task.spawn(function()
-        wait(Time or 5);
-
-        pcall(NotifyOuter.TweenSize, NotifyOuter, UDim2.new(0, 0, 0, YSize), 'Out', 'Quad', 0.4, true);
-
-        wait(0.4);
-
-        NotifyOuter:Destroy();
-    end);
-end;
+        SlideIn()
+        DrainProgress(Time or 5)
+        task.wait(Time or 5)
+        SlideOut()
+    end)
+end
 
 function Library:CreateWindow(...)
     local Arguments = { ... }
