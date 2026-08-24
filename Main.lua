@@ -72,21 +72,21 @@ task.defer(function()
 end)
 
 local Library = {
-    Registry = {};
-    RegistryMap = {};
-    HudRegistry = {};
-    FontColor = Color3.fromRGB(255, 255, 255);
-    MainColor = Color3.fromRGB(18, 18, 18);
-    BackgroundColor = Color3.fromRGB(10, 10, 10);
-    AccentColor = Color3.fromRGB(200, 30, 30);
-    OutlineColor = Color3.fromRGB(80, 15, 15);
-    RiskColor = Color3.fromRGB(255, 80, 80);
-    Black = Color3.new(0, 0, 0);
-    FontFace = CustomFont;
-    OpenedFrames = {};
+    Registry        = {};
+    RegistryMap     = {};
+    HudRegistry     = {};
+    FontColor       = Color3.fromRGB(220, 225, 235);
+    MainColor       = Color3.fromRGB(28, 32, 38);
+    BackgroundColor = Color3.fromRGB(16, 18, 22);
+    AccentColor     = Color3.fromRGB(42, 100, 150);
+    OutlineColor    = Color3.fromRGB(30, 55, 80);
+    RiskColor       = Color3.fromRGB(80, 160, 220);
+    Black           = Color3.new(0, 0, 0);
+    FontFace        = CustomFont;
+    OpenedFrames    = {};
     DependencyBoxes = {};
-    Signals = {};
-    ScreenGui = ScreenGui;
+    Signals         = {};
+    ScreenGui       = ScreenGui;
 };
 
 local RainbowStep = 0
@@ -2906,7 +2906,6 @@ local TAG_MAP = {
 
 local function BuildRichText(raw, accentHex)
     TAG_MAP.accent = accentHex or "ffffff"
-
     raw = raw:gsub("{(%a+)}(.-){/%1}", function(tag, content)
         local hex = TAG_MAP[tag:lower()]
         if hex then
@@ -2914,20 +2913,20 @@ local function BuildRichText(raw, accentHex)
         end
         return content
     end)
-
     raw = raw:gsub("{#(%x%x%x%x%x%x)}(.-){/#}", function(hex, content)
         return ('<font color="#%s">%s</font>'):format(hex, content)
     end)
-
     return raw
 end
 
 function Library:Notify(Text, Time)
-    local TWEEN  = 0.4
-    local TSIZE  = 14
-    local PAD_X  = 20  -- left bar (2) + left pad (8) + right pad (10)
-    local PAD_Y  = 7
-    local HEIGHT = 26  -- fixed height, never changes
+    local TWEEN   = 0.4
+    local TSIZE   = 11
+    local PAD_X   = 20   -- total horizontal padding (left bar 2px + gap 6px + right margin 12px)
+    local PAD_Y   = 7
+    local HEIGHT  = 26
+    local LEFT_BAR_W = 2
+    local LABEL_OFFSET = 8  -- gap between left bar and text start
 
     local accentHex = ("%02x%02x%02x"):format(
         math.floor(Library.AccentColor.R * 255),
@@ -2935,16 +2934,19 @@ function Library:Notify(Text, Time)
         math.floor(Library.AccentColor.B * 255)
     )
 
+    -- Strip all tags before measuring so GetTextBounds sees plain text only
     local stripped = Text:gsub("{[^}]+}", "")
+    local textW    = Library:GetTextBounds(stripped, Library.FontFace, TSIZE)
+    local totalW   = textW + LEFT_BAR_W + LABEL_OFFSET + PAD_X
 
-    -- measure only width, height is fixed
-    local XSize = Library:GetTextBounds(stripped, Library.FontFace, TSIZE)
-    local totalW = XSize + PAD_X
+    -- Label width = totalW minus the left bar and its gap, minus right margin
+    local labelW   = textW + PAD_X
 
     local NotifyOuter = Library:Create('Frame', {
         BackgroundTransparency = 1,
         BorderSizePixel        = 0,
         Position               = UDim2.new(0, 0, 0, 0),
+        -- Start collapsed; tween opens to totalW
         Size                   = UDim2.new(0, 0, 0, HEIGHT),
         ClipsDescendants       = true,
         ZIndex                 = 100,
@@ -2955,16 +2957,16 @@ function Library:Notify(Text, Time)
         BackgroundColor3 = Library.AccentColor,
         BorderSizePixel  = 0,
         Position         = UDim2.new(0, 0, 0, 0),
-        Size             = UDim2.new(0, 2, 1, 0),
+        Size             = UDim2.new(0, LEFT_BAR_W, 1, 0),
         ZIndex           = 101,
         Parent           = NotifyOuter,
     })
-
     Library:AddToRegistry(LeftBar, { BackgroundColor3 = 'AccentColor' }, true)
 
+    -- Absolute size so the label never relies on the outer frame's animated width
     local Label = Library:CreateLabel({
-        Position       = UDim2.new(0, 8, 0, 0),
-        Size           = UDim2.new(1, -10, 1, 0),
+        Position       = UDim2.new(0, LEFT_BAR_W + LABEL_OFFSET, 0, 0),
+        Size           = UDim2.new(0, labelW, 1, 0),
         Text           = BuildRichText(Text, accentHex),
         RichText       = true,
         TextColor3     = Color3.new(1, 1, 1),
@@ -2976,10 +2978,14 @@ function Library:Notify(Text, Time)
     })
 
     task.spawn(function()
+        -- Slide open
         pcall(function()
             NotifyOuter:TweenSize(
                 UDim2.new(0, totalW, 0, HEIGHT),
-                Enum.EasingDirection.Out, Enum.EasingStyle.Quad, TWEEN, true
+                Enum.EasingDirection.Out,
+                Enum.EasingStyle.Quad,
+                TWEEN,
+                true
             )
         end)
 
@@ -2987,15 +2993,21 @@ function Library:Notify(Text, Time)
 
         if not NotifyOuter or not NotifyOuter.Parent then return end
 
+        -- Slide closed
         pcall(function()
             NotifyOuter:TweenSize(
                 UDim2.new(0, 0, 0, HEIGHT),
-                Enum.EasingDirection.Out, Enum.EasingStyle.Quad, TWEEN, true
+                Enum.EasingDirection.Out,
+                Enum.EasingStyle.Quad,
+                TWEEN,
+                true
             )
         end)
 
         task.wait(TWEEN)
-        if NotifyOuter and NotifyOuter.Parent then NotifyOuter:Destroy() end
+        if NotifyOuter and NotifyOuter.Parent then
+            NotifyOuter:Destroy()
+        end
     end)
 end
 
