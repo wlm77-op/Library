@@ -2896,11 +2896,37 @@ function Library:SetWatermark(Text)
     Library.WatermarkText.Text = Text;
 end;
 
+local TAG_MAP = {
+    red    = "ff4444",
+    green  = "88ff88",
+    yellow = "ffdd55",
+    dim    = "888888",
+    white  = "ffffff",
+}
+
+local function BuildRichText(raw, accentHex)
+    TAG_MAP.accent = accentHex or "ffffff"
+
+    raw = raw:gsub("{(%a+)}(.-){/%1}", function(tag, content)
+        local hex = TAG_MAP[tag:lower()]
+        if hex then
+            return ('<font color="#%s">%s</font>'):format(hex, content)
+        end
+        return content
+    end)
+
+    raw = raw:gsub("{#(%x%x%x%x%x%x)}(.-){/#}", function(hex, content)
+        return ('<font color="#%s">%s</font>'):format(hex, content)
+    end)
+
+    return raw
+end
+
 function Library:Notify(Text, Time)
-    local TWEEN  = 0.4
-    local TSIZE  = 14
-    local PAD_X  = 20   -- left bar (2) + left pad (8) + right pad (10)
-    local PAD_Y  = 7
+    local TWEEN = 0.4
+    local TSIZE = 14
+    local PAD_X = 20  -- left bar (2) + left pad (8) + right pad (10)
+    local PAD_Y = 7
 
     local accentHex = ("%02x%02x%02x"):format(
         math.floor(Library.AccentColor.R * 255),
@@ -2910,11 +2936,11 @@ function Library:Notify(Text, Time)
 
     local stripped = Text:gsub("{[^}]+}", "")
 
-    -- measure unconstrained width first, then cap at a sane max
+    -- unconstrained width first, then cap
     local rawX = Library:GetTextBounds(stripped, Library.FontFace, TSIZE)
-    local maxW  = math.min(rawX, 420)   -- never wider than 420px
+    local maxW  = math.min(rawX, 420)
 
-    -- now measure actual height given that width constraint
+    -- real height under that width constraint
     local _, YSize = Library:GetTextBounds(stripped, Library.FontFace, TSIZE, Vector2.new(maxW, math.huge))
     YSize = YSize + PAD_Y
 
