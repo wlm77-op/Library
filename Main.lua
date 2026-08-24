@@ -2896,175 +2896,109 @@ function Library:SetWatermark(Text)
     Library.WatermarkText.Text = Text;
 end;
 
+-- Usage:
+-- Library:Notify("hit in {red}head{/red} — {#00ff88}clean{/#}", 5)
+-- Library:Notify("{accent}HEADSHOT{/accent} registered", 3)
+-- Built-in tags: {red} {green} {yellow} {accent} {dim}
+-- Hex tags:      {#rrggbb}text{/#}
+
+local TAG_MAP = {
+    red    = "ff4444",
+    green  = "88ff88",
+    yellow = "ffdd55",
+    dim    = "888888",
+    white  = "ffffff",
+}
+
+local function BuildRichText(raw, accentHex)
+    TAG_MAP.accent = accentHex or "ffffff"
+
+    -- named tags
+    raw = raw:gsub("{(%a+)}(.-){/%1}", function(tag, content)
+        local hex = TAG_MAP[tag:lower()]
+        if hex then
+            return ('<font color="#%s">%s</font>'):format(hex, content)
+        end
+        return content
+    end)
+
+    -- hex tags  {#rrggbb}...{/#}
+    raw = raw:gsub("{#(%x%x%x%x%x%x)}(.-){/#}", function(hex, content)
+        return ('<font color="#%s">%s</font>'):format(hex, content)
+    end)
+
+    return raw
+end
+
 function Library:Notify(Text, Time)
-    local XSize, YSize = Library:GetTextBounds(Text, Library.FontFace, 14)
+    local TWEEN  = 0.4
+    local TSIZE  = 14
+    local PAD_Y  = 7
 
-    YSize = YSize + 7
+    local accentHex = ("%02x%02x%02x"):format(
+        math.floor(Library.AccentColor.R * 255),
+        math.floor(Library.AccentColor.G * 255),
+        math.floor(Library.AccentColor.B * 255)
+    )
 
-    local FullWidth = XSize + 8 + 4
-    local FadeWidth = math.floor(FullWidth * 0.30)
+    local stripped  = Text:gsub("{[^}]+}", "")
+    local XSize, YSize = Library:GetTextBounds(stripped, Library.FontFace, TSIZE)
+    YSize = YSize + PAD_Y
 
     local NotifyOuter = Library:Create('Frame', {
-        BorderColor3 = Color3.new(0, 0, 0);
-        Position = UDim2.fromOffset(FullWidth + 10, 10);
-        Size = UDim2.fromOffset(FullWidth, YSize);
-        ClipsDescendants = true;
-        ZIndex = 100;
-        Parent = Library.NotificationArea;
-    });
+        BackgroundTransparency = 1,
+        BorderSizePixel        = 0,
+        Position               = UDim2.new(0, 0, 0, 0),
+        Size                   = UDim2.new(0, 0, 0, YSize),
+        ClipsDescendants       = true,
+        ZIndex                 = 100,
+        Parent                 = Library.NotificationArea,
+    })
 
-    local NotifyInner = Library:Create('Frame', {
-        BackgroundColor3 = Library.MainColor;
-        BorderColor3 = Library.OutlineColor;
-        BorderMode = Enum.BorderMode.Inset;
-        Size = UDim2.fromScale(1, 1);
-        ZIndex = 101;
-        Parent = NotifyOuter;
-    });
+    local LeftBar = Library:Create('Frame', {
+        BackgroundColor3 = Library.AccentColor,
+        BorderSizePixel  = 0,
+        Position         = UDim2.new(0, 0, 0, 0),
+        Size             = UDim2.new(0, 2, 1, 0),
+        ZIndex           = 101,
+        Parent           = NotifyOuter,
+    })
 
-    Library:AddToRegistry(NotifyInner, {
-        BackgroundColor3 = 'MainColor';
-        BorderColor3 = 'OutlineColor';
-    }, true);
+    Library:AddToRegistry(LeftBar, { BackgroundColor3 = 'AccentColor' }, true)
 
-    local InnerFrame = Library:Create('Frame', {
-        BackgroundColor3 = Color3.new(1, 1, 1);
-        BorderSizePixel = 0;
-        Position = UDim2.fromOffset(1, 1);
-        Size = UDim2.new(1, -2, 1, -2);
-        ZIndex = 102;
-        Parent = NotifyInner;
-    });
-
-    local BgGradient = Library:Create('UIGradient', {
-        Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Library:GetDarkerColor(Library.MainColor)),
-            ColorSequenceKeypoint.new(1, Library.MainColor),
-        });
-        Rotation = -90;
-        Parent = InnerFrame;
-    });
-
-    Library:AddToRegistry(BgGradient, {
-        Color = function()
-            return ColorSequence.new({
-                ColorSequenceKeypoint.new(0, Library:GetDarkerColor(Library.MainColor)),
-                ColorSequenceKeypoint.new(1, Library.MainColor),
-            })
-        end
-    });
-
-    Library:CreateLabel({
-        Position = UDim2.fromOffset(4, 0);
-        Size = UDim2.new(1, -4, 1, 0);
-        Text = Text;
-        TextXAlignment = Enum.TextXAlignment.Left;
-        TextSize = 10;
-        ZIndex = 103;
-        Parent = InnerFrame;
-    });
-
-    local LeftColor = Library:Create('Frame', {
-        BackgroundColor3 = Library.AccentColor;
-        BorderSizePixel = 0;
-        Position = UDim2.fromOffset(-1, -1);
-        Size = UDim2.new(0, 3, 1, 2);
-        ZIndex = 104;
-        Parent = NotifyOuter;
-    });
-
-    Library:AddToRegistry(LeftColor, {
-        BackgroundColor3 = 'AccentColor';
-    }, true);
-
-    local ProgressOuter = Library:Create('Frame', {
-        BackgroundTransparency = 1;
-        BorderSizePixel = 0;
-        Position = UDim2.new(0, 1, 1, -3);
-        Size = UDim2.new(1, -2, 0, 2);
-        ZIndex = 108;
-        ClipsDescendants = true;
-        Parent = NotifyInner;
-    });
-
-    local ProgressBar = Library:Create('Frame', {
-        BackgroundColor3 = Library.AccentColor;
-        BorderSizePixel = 0;
-        Size = UDim2.fromScale(1, 1);
-        ZIndex = 109;
-        Parent = ProgressOuter;
-    });
-
-    Library:AddToRegistry(ProgressBar, {
-        BackgroundColor3 = 'AccentColor';
-    }, true);
-
-    local FadeOverlay = Library:Create('Frame', {
-        BackgroundColor3 = Library.MainColor;
-        BorderSizePixel = 0;
-        Position = UDim2.new(1, -FadeWidth - 1, 0, 1);
-        Size = UDim2.fromOffset(FadeWidth, YSize - 2);
-        ZIndex = 110;
-        Parent = NotifyInner;
-    });
-
-    Library:Create('UIGradient', {
-        Transparency = NumberSequence.new({
-            NumberSequenceKeypoint.new(0, 1),
-            NumberSequenceKeypoint.new(1, 0),
-        });
-        Rotation = 0;
-        Parent = FadeOverlay;
-    });
-
-    Library:AddToRegistry(FadeOverlay, {
-        BackgroundColor3 = 'MainColor';
-    }, true);
-
-    local function SlideIn()
-        TweenService:Create(NotifyOuter, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            Position = UDim2.fromOffset(-6, 10),
-        }):Play()
-
-        task.wait(0.22)
-
-        TweenService:Create(NotifyOuter, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-            Position = UDim2.fromOffset(0, 10),
-        }):Play()
-    end
-
-    local function SlideOut()
-        TweenService:Create(LeftColor, TweenInfo.new(0.12, Enum.EasingStyle.Linear), {
-            BackgroundTransparency = 0.6,
-        }):Play()
-
-        task.wait(0.10)
-
-        TweenService:Create(NotifyOuter, TweenInfo.new(0.20, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-            Position = UDim2.fromOffset(FullWidth + 20, 10),
-        }):Play()
-
-        task.wait(0.20)
-
-        TweenService:Create(NotifyOuter, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            Size = UDim2.fromOffset(FullWidth, 0),
-        }):Play()
-
-        task.wait(0.14)
-        NotifyOuter:Destroy()
-    end
-
-    local function DrainProgress(Duration)
-        TweenService:Create(ProgressBar, TweenInfo.new(Duration, Enum.EasingStyle.Linear), {
-            Size = UDim2.fromScale(0, 1),
-        }):Play()
-    end
+    local Label = Library:CreateLabel({
+        Position      = UDim2.new(0, 8, 0, 0),
+        Size          = UDim2.new(1, -8, 1, 0),
+        Text          = BuildRichText(Text, accentHex),
+        RichText      = true,
+        TextColor3    = Color3.new(1, 1, 1),
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextSize      = TSIZE,
+        ZIndex        = 102,
+        Parent        = NotifyOuter,
+    })
 
     task.spawn(function()
-        SlideIn()
-        DrainProgress(Time or 5)
+        pcall(function()
+            NotifyOuter:TweenSize(
+                UDim2.new(0, XSize + 14, 0, YSize),
+                Enum.EasingDirection.Out, Enum.EasingStyle.Quad, TWEEN, true
+            )
+        end)
+
         task.wait(Time or 5)
-        SlideOut()
+
+        if not NotifyOuter or not NotifyOuter.Parent then return end
+
+        pcall(function()
+            NotifyOuter:TweenSize(
+                UDim2.new(0, 0, 0, YSize),
+                Enum.EasingDirection.Out, Enum.EasingStyle.Quad, TWEEN, true
+            )
+        end)
+
+        task.wait(TWEEN)
+        if NotifyOuter and NotifyOuter.Parent then NotifyOuter:Destroy() end
     end)
 end
 
