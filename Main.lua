@@ -29,21 +29,27 @@ local function GetCustomFont()
     local ttfName = "m.ttf"
     local fontConfigName = "m.font"
     local fontUrl = "https://raw.githubusercontent.com/Dicfoomdoom/LinoriaR_2/main/addons/minecraft.ttf"
+
     if writefile and readfile and isfile and getcustomasset then
-        if not isfile(ttfName) then
-            local success, content = pcall(function()
-                return game:HttpGet(fontUrl)
-            end)
-            if success then
-                writefile(ttfName, content)
-            else
-                return Font.fromEnum(Enum.Font.Code)
-            end
+        if isfile(ttfName) then
+            delfile(ttfName)
         end
-        local ttfAsset = getcustomasset(ttfName)
         if isfile(fontConfigName) then
             delfile(fontConfigName)
         end
+
+        local success, content = pcall(function()
+            return game:HttpGet(fontUrl)
+        end)
+
+        if not success or not content or content == "" then
+            return Font.fromEnum(Enum.Font.Code)
+        end
+
+        writefile(ttfName, content)
+
+        local ttfAsset = getcustomasset(ttfName)
+
         local fontStructure = {
             name = "minecraft",
             faces = {
@@ -56,13 +62,15 @@ local function GetCustomFont()
             },
             fallbacks = {}
         }
+
         writefile(fontConfigName, HttpService:JSONEncode(fontStructure))
+
         local fontAsset = getcustomasset(fontConfigName)
         return Font.new(fontAsset, Enum.FontWeight.Regular, Enum.FontStyle.Normal)
     end
+
     return Font.fromEnum(Enum.Font.Code)
 end
-
 local FontReady = false
 local CustomFont = GetCustomFont()
 task.defer(function()
