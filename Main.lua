@@ -2896,43 +2896,10 @@ function Library:SetWatermark(Text)
     Library.WatermarkText.Text = Text;
 end;
 
--- Usage:
--- Library:Notify("hit in {red}head{/red} — {#00ff88}clean{/#}", 5)
--- Library:Notify("{accent}HEADSHOT{/accent} registered", 3)
--- Built-in tags: {red} {green} {yellow} {accent} {dim}
--- Hex tags:      {#rrggbb}text{/#}
-
-local TAG_MAP = {
-    red    = "ff4444",
-    green  = "88ff88",
-    yellow = "ffdd55",
-    dim    = "888888",
-    white  = "ffffff",
-}
-
-local function BuildRichText(raw, accentHex)
-    TAG_MAP.accent = accentHex or "ffffff"
-
-    -- named tags
-    raw = raw:gsub("{(%a+)}(.-){/%1}", function(tag, content)
-        local hex = TAG_MAP[tag:lower()]
-        if hex then
-            return ('<font color="#%s">%s</font>'):format(hex, content)
-        end
-        return content
-    end)
-
-    -- hex tags  {#rrggbb}...{/#}
-    raw = raw:gsub("{#(%x%x%x%x%x%x)}(.-){/#}", function(hex, content)
-        return ('<font color="#%s">%s</font>'):format(hex, content)
-    end)
-
-    return raw
-end
-
 function Library:Notify(Text, Time)
     local TWEEN  = 0.4
     local TSIZE  = 14
+    local PAD_X  = 20   -- left bar (2) + left pad (8) + right pad (10)
     local PAD_Y  = 7
 
     local accentHex = ("%02x%02x%02x"):format(
@@ -2941,9 +2908,17 @@ function Library:Notify(Text, Time)
         math.floor(Library.AccentColor.B * 255)
     )
 
-    local stripped  = Text:gsub("{[^}]+}", "")
-    local XSize, YSize = Library:GetTextBounds(stripped, Library.FontFace, TSIZE)
+    local stripped = Text:gsub("{[^}]+}", "")
+
+    -- measure unconstrained width first, then cap at a sane max
+    local rawX = Library:GetTextBounds(stripped, Library.FontFace, TSIZE)
+    local maxW  = math.min(rawX, 420)   -- never wider than 420px
+
+    -- now measure actual height given that width constraint
+    local _, YSize = Library:GetTextBounds(stripped, Library.FontFace, TSIZE, Vector2.new(maxW, math.huge))
     YSize = YSize + PAD_Y
+
+    local totalW = maxW + PAD_X
 
     local NotifyOuter = Library:Create('Frame', {
         BackgroundTransparency = 1,
@@ -2967,21 +2942,22 @@ function Library:Notify(Text, Time)
     Library:AddToRegistry(LeftBar, { BackgroundColor3 = 'AccentColor' }, true)
 
     local Label = Library:CreateLabel({
-        Position      = UDim2.new(0, 8, 0, 0),
-        Size          = UDim2.new(1, -8, 1, 0),
-        Text          = BuildRichText(Text, accentHex),
-        RichText      = true,
-        TextColor3    = Color3.new(1, 1, 1),
+        Position       = UDim2.new(0, 8, 0, 0),
+        Size           = UDim2.new(1, -10, 1, 0),
+        Text           = BuildRichText(Text, accentHex),
+        RichText       = true,
+        TextColor3     = Color3.new(1, 1, 1),
         TextXAlignment = Enum.TextXAlignment.Left,
-        TextSize      = TSIZE,
-        ZIndex        = 102,
-        Parent        = NotifyOuter,
+        TextWrapped    = true,
+        TextSize       = TSIZE,
+        ZIndex         = 102,
+        Parent         = NotifyOuter,
     })
 
     task.spawn(function()
         pcall(function()
             NotifyOuter:TweenSize(
-                UDim2.new(0, XSize + 14, 0, YSize),
+                UDim2.new(0, totalW, 0, YSize),
                 Enum.EasingDirection.Out, Enum.EasingStyle.Quad, TWEEN, true
             )
         end)
