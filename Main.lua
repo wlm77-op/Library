@@ -2923,10 +2923,11 @@ local function BuildRichText(raw, accentHex)
 end
 
 function Library:Notify(Text, Time)
-    local TWEEN = 0.4
-    local TSIZE = 14
-    local PAD_X = 20  -- left bar (2) + left pad (8) + right pad (10)
-    local PAD_Y = 7
+    local TWEEN  = 0.4
+    local TSIZE  = 14
+    local PAD_X  = 20  -- left bar (2) + left pad (8) + right pad (10)
+    local PAD_Y  = 7
+    local HEIGHT = 26  -- fixed height, never changes
 
     local accentHex = ("%02x%02x%02x"):format(
         math.floor(Library.AccentColor.R * 255),
@@ -2936,21 +2937,15 @@ function Library:Notify(Text, Time)
 
     local stripped = Text:gsub("{[^}]+}", "")
 
-    -- unconstrained width first, then cap
-    local rawX = Library:GetTextBounds(stripped, Library.FontFace, TSIZE)
-    local maxW  = math.min(rawX, 420)
-
-    -- real height under that width constraint
-    local _, YSize = Library:GetTextBounds(stripped, Library.FontFace, TSIZE, Vector2.new(maxW, math.huge))
-    YSize = YSize + PAD_Y
-
-    local totalW = maxW + PAD_X
+    -- measure only width, height is fixed
+    local XSize = Library:GetTextBounds(stripped, Library.FontFace, TSIZE)
+    local totalW = XSize + PAD_X
 
     local NotifyOuter = Library:Create('Frame', {
         BackgroundTransparency = 1,
         BorderSizePixel        = 0,
         Position               = UDim2.new(0, 0, 0, 0),
-        Size                   = UDim2.new(0, 0, 0, YSize),
+        Size                   = UDim2.new(0, 0, 0, HEIGHT),
         ClipsDescendants       = true,
         ZIndex                 = 100,
         Parent                 = Library.NotificationArea,
@@ -2974,7 +2969,7 @@ function Library:Notify(Text, Time)
         RichText       = true,
         TextColor3     = Color3.new(1, 1, 1),
         TextXAlignment = Enum.TextXAlignment.Left,
-        TextWrapped    = true,
+        TextWrapped    = false,
         TextSize       = TSIZE,
         ZIndex         = 102,
         Parent         = NotifyOuter,
@@ -2983,7 +2978,7 @@ function Library:Notify(Text, Time)
     task.spawn(function()
         pcall(function()
             NotifyOuter:TweenSize(
-                UDim2.new(0, totalW, 0, YSize),
+                UDim2.new(0, totalW, 0, HEIGHT),
                 Enum.EasingDirection.Out, Enum.EasingStyle.Quad, TWEEN, true
             )
         end)
@@ -2994,7 +2989,7 @@ function Library:Notify(Text, Time)
 
         pcall(function()
             NotifyOuter:TweenSize(
-                UDim2.new(0, 0, 0, YSize),
+                UDim2.new(0, 0, 0, HEIGHT),
                 Enum.EasingDirection.Out, Enum.EasingStyle.Quad, TWEEN, true
             )
         end)
