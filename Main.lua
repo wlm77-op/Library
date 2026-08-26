@@ -28,7 +28,7 @@ getgenv().Options = Options;
 local function GetCustomFont()
     local ttfName = "m.ttf"
     local fontConfigName = "m.font"
-    local fontUrl = "https://raw.githubusercontent.com/Dicfoomdoom/LinoriaR_2/main/addons/minecraft.ttf"
+    local fontUrl = "https://raw.githubusercontent.com/wlm77-op/Library/refs/heads/main/Fonts/Menu.ttf"
 
     if writefile and readfile and isfile and getcustomasset then
         if isfile(ttfName) then
